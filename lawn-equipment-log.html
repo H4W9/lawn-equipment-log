@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="app-version" content="1.0.0">
+<meta name="app-version" content="1.1.0"><!-- bump this when cutting a release; CI also stamps the tag into the release asset -->
 <meta name="theme-color" content="#2d6a37">
 <title>Lawn Equipment Log</title>
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
@@ -91,6 +91,12 @@ button{cursor:pointer}
 .meter{display:inline-flex;align-items:baseline;gap:4px;background:var(--meter-bg);color:var(--meter-ink);font-family:var(--mono);font-variant-numeric:tabular-nums;border-radius:6px;padding:5px 9px;font-size:1.05rem;letter-spacing:.04em;align-self:start;white-space:nowrap}
 .meter small{font-size:.7rem;opacity:.75;letter-spacing:.06em}
 .meter.big{font-size:1.7rem;padding:8px 12px}
+.meter.date{font-size:.95rem}
+.meter.big.date{font-size:1.25rem}
+#eq-form.nometer .f-hours-wrap,#eq-form.nometer .iv-h,#eq-form.nometer .iv-head span:nth-child(2){display:none}
+#eq-form.nometer .iv-row{grid-template-columns:minmax(0,1fr) 5.5em 36px}
+.checkrow{display:flex;gap:10px;align-items:center;font-weight:500}
+.checkrow input{width:18px;height:18px;accent-color:var(--accent)}
 
 .chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .chip.overdue{background:var(--bad-bg);color:var(--bad)}
@@ -130,6 +136,11 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 .log .meta{color:var(--muted);font-size:.85rem;font-family:var(--mono)}
 .log .extra{grid-column:1/-1;font-size:.88rem;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
 .muted{color:var(--muted)}
+footer{margin-top:8px;color:var(--muted);font-size:12px;text-align:center}
+footer a{color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+footer a:hover{filter:brightness(1.15)}
+#appVersion{font-variant-numeric:tabular-nums}
+.gh-ico{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
 
 /* sheet */
 .backdrop{position:fixed;inset:0;background:rgba(10,14,10,.5);z-index:20;display:flex;justify-content:center;align-items:flex-end}
@@ -176,6 +187,9 @@ textarea.json{width:100%;min-height:120px;font-family:var(--mono);font-size:.78r
   </header>
   <div id="notices"></div>
   <main id="main"></main>
+  <footer>
+    <div>Lawn Equipment Log <span id="appVersion">v1.1.0</span> &middot; <a href="https://github.com/H4W9/lawn-equipment-log/releases/latest/download/lawn-equipment-log.html">Download latest release</a> &middot; <a href="https://github.com/H4W9/lawn-equipment-log"><svg class="gh-ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source</a></div>
+  </footer>
 </div>
 <div class="backdrop" id="backdrop" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 
@@ -196,6 +210,23 @@ const TEMPLATES={
   'Snow blower':[['Change oil',null,365],['Spark plug',100,365],['Check shear pins & belts',null,365]],
   'Other':[]
 };
+const NO_METER=['Push mower','String trimmer','Edger','Leaf blower','Chainsaw','Hedge trimmer','Tiller','Snow blower','Other'];
+const DATE_TEMPLATES={
+  'Push mower':[['Change oil',null,365],['Air filter',null,365],['Spark plug',null,365],['Sharpen blade',null,180]],
+  'String trimmer':[['Clean air filter',null,90],['Spark plug',null,365],['Fuel filter',null,365],['Grease gearhead',null,180]],
+  'Edger':[['Clean air filter',null,90],['Spark plug',null,365],['Replace blade',null,180]],
+  'Leaf blower':[['Clean air filter',null,90],['Spark plug',null,365],['Fuel filter',null,365]],
+  'Chainsaw':[['Sharpen chain',null,30],['Clean air filter',null,30],['Flip & clean bar',null,30],['Spark plug',null,365]],
+  'Hedge trimmer':[['Clean air filter',null,90],['Lubricate blades',null,30],['Spark plug',null,365]],
+  'Tiller':[['Change oil',null,365],['Air filter',null,365],['Spark plug',null,365]],
+  'Snow blower':[['Change oil',null,365],['Spark plug',null,365],['Check shear pins & belts',null,365]],
+  'Riding mower':[['Engine oil & filter',null,365],['Air filter',null,180],['Spark plug(s)',null,365],['Sharpen blades',null,90],['Grease fittings',null,90]],
+  'Zero-turn mower':[['Engine oil & filter',null,365],['Air filter',null,180],['Sharpen blades',null,90],['Grease fittings',null,90],['Spark plugs',null,365]],
+  'Other':[]
+};
+const hasMeter=e=>e&&e.meter!==undefined?!!e.meter:!NO_METER.includes(e&&e.type);
+const ivHint=m=>m?'Set hours, days, or both. Whichever comes first triggers "due".':'Set how many days between each service.';
+const template=(type,meter)=>((meter?TEMPLATES:DATE_TEMPLATES)[type]||[]);
 let db={equipment:[],logs:[],examples:false};
 let storageOK=true;
 const view={mode:'list',id:null,q:'',type:'All'};
@@ -240,26 +271,26 @@ function seed(){
     {id:uid(),task:'Sharpen blades',everyHours:25,everyDays:null,lastHours:185.0,lastDate:addDays(t,-70)},
     {id:uid(),task:'Grease fittings',everyHours:25,everyDays:null,lastHours:205.0,lastDate:addDays(t,-12)},
   ];
-  const push=mk({name:'Push mower (example)',type:'Push mower',make:'Example Co.',model:'PM-21',serial:'EX-PM21-88213',year:'2021',engineMake:'Example 160cc OHV',fuel:'Gasoline',oilType:'SAE 30',oilCap:'0.5 qt',plug:'Example BPR5ES',airFilter:'EX-AF-210',blade:'EX-BL-21',hours:41.5,notes:''});
+  const push=mk({name:'Push mower (example)',type:'Push mower',make:'Example Co.',model:'PM-21',serial:'EX-PM21-88213',year:'2021',engineMake:'Example 160cc OHV',fuel:'Gasoline',oilType:'SAE 30',oilCap:'0.5 qt',plug:'Example BPR5ES',airFilter:'EX-AF-210',blade:'EX-BL-21',meter:false,notes:''});
   push.intervals=[
-    {id:uid(),task:'Change oil',everyHours:50,everyDays:365,lastHours:12.0,lastDate:addDays(t,-340)},
-    {id:uid(),task:'Air filter',everyHours:25,everyDays:365,lastHours:25.0,lastDate:addDays(t,-120)},
-    {id:uid(),task:'Spark plug',everyHours:100,everyDays:365,lastHours:null,lastDate:null},
-    {id:uid(),task:'Sharpen blade',everyHours:25,everyDays:null,lastHours:25.0,lastDate:addDays(t,-120)},
+    {id:uid(),task:'Change oil',everyHours:null,everyDays:365,lastHours:null,lastDate:addDays(t,-340)},
+    {id:uid(),task:'Air filter',everyHours:null,everyDays:365,lastHours:null,lastDate:addDays(t,-120)},
+    {id:uid(),task:'Spark plug',everyHours:null,everyDays:365,lastHours:null,lastDate:null},
+    {id:uid(),task:'Sharpen blade',everyHours:null,everyDays:180,lastHours:null,lastDate:addDays(t,-120)},
   ];
-  const trim=mk({name:'Trimmer (example)',type:'String trimmer',make:'Example Co.',model:'ST-27',serial:'EX-ST27-30071',year:'2022',engineMake:'27cc 2-stroke',fuel:'50:1 premix',oilType:'2-stroke oil, 50:1',plug:'Example CMR6H',airFilter:'EX-AF-27',blade:'0.095 in. round line',hours:18.0,notes:'Keep fuel stabilized over winter.'});
+  const trim=mk({name:'Trimmer (example)',type:'String trimmer',make:'Example Co.',model:'ST-27',serial:'EX-ST27-30071',year:'2022',engineMake:'27cc 2-stroke',fuel:'50:1 premix',oilType:'2-stroke oil, 50:1',plug:'Example CMR6H',airFilter:'EX-AF-27',blade:'0.095 in. round line',meter:false,notes:'Keep fuel stabilized over winter.'});
   trim.intervals=[
-    {id:uid(),task:'Clean air filter',everyHours:10,everyDays:null,lastHours:14.0,lastDate:addDays(t,-40)},
-    {id:uid(),task:'Spark plug',everyHours:100,everyDays:365,lastHours:0,lastDate:'2022-04-20'},
-    {id:uid(),task:'Grease gearhead',everyHours:25,everyDays:null,lastHours:5.0,lastDate:addDays(t,-200)},
+    {id:uid(),task:'Clean air filter',everyHours:null,everyDays:90,lastHours:null,lastDate:addDays(t,-40)},
+    {id:uid(),task:'Spark plug',everyHours:null,everyDays:365,lastHours:null,lastDate:addDays(t,-400)},
+    {id:uid(),task:'Grease gearhead',everyHours:null,everyDays:180,lastHours:null,lastDate:addDays(t,-200)},
   ];
   db.equipment=[rider,push,trim];
   db.logs=[
     {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-12),hours:205.0,tasks:['Grease fittings'],parts:'',cost:null,notes:''},
     {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-60),hours:190.0,tasks:['Air filter clean/replace'],parts:'Blew out filter, reused',cost:null,notes:''},
     {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-150),hours:160.0,tasks:['Engine oil & filter','Spark plug(s)'],parts:'2 qt 10W-30, filter EX-OF-49, 2 plugs',cost:38.50,notes:'Pre-season service.'},
-    {id:uid(),ex:true,equipId:push.id,date:addDays(t,-120),hours:25.0,tasks:['Air filter','Sharpen blade'],parts:'EX-AF-210',cost:12.99,notes:''},
-    {id:uid(),ex:true,equipId:trim.id,date:addDays(t,-40),hours:14.0,tasks:['Clean air filter'],parts:'',cost:null,notes:''},
+    {id:uid(),ex:true,equipId:push.id,date:addDays(t,-120),hours:null,tasks:['Air filter','Sharpen blade'],parts:'EX-AF-210',cost:12.99,notes:''},
+    {id:uid(),ex:true,equipId:trim.id,date:addDays(t,-40),hours:null,tasks:['Clean air filter'],parts:'',cost:null,notes:''},
   ];
   db.examples=true;
 }
@@ -267,11 +298,11 @@ function seed(){
 /* ---------- status ---------- */
 const RANK={overdue:3,soon:2,none:1,ok:0};
 function ivStatus(eq,iv){
-  const cur=+eq.hours||0, t=todayStr();
+  const cur=+eq.hours||0, t=todayStr(), m=hasMeter(eq);
   let hrsLeft=null,daysLeft=null,dueH=null,dueD=null;
-  const never=(iv.lastHours==null)&&!iv.lastDate;
+  const never=(!m||iv.lastHours==null)&&!iv.lastDate;
   if(never) return {state:'none',hrsLeft,daysLeft,dueH,dueD,text:'No service recorded'};
-  if(iv.everyHours&&iv.lastHours!=null){dueH=+iv.lastHours+ +iv.everyHours;hrsLeft=dueH-cur;}
+  if(m&&iv.everyHours&&iv.lastHours!=null){dueH=+iv.lastHours+ +iv.everyHours;hrsLeft=dueH-cur;}
   if(iv.everyDays&&iv.lastDate){dueD=addDays(iv.lastDate,+iv.everyDays);daysLeft=daysBetween(t,dueD);}
   let state='ok';
   if((hrsLeft!=null&&hrsLeft<=0)||(daysLeft!=null&&daysLeft<=0)) state='overdue';
@@ -335,16 +366,23 @@ function renderList(){
         <div class="main"><span class="label">${esc(e.type||'Equipment')}${e.year?' · '+esc(e.year):''}</span>
           <h3>${esc(e.name||'Untitled')}</h3>
           <span class="sub">${esc([e.make,e.model].filter(Boolean).join(' '))}${e.serial?` · <span class="mono">SN ${esc(e.serial)}</span>`:''}</span></div>
-        <span class="meter">${meterTxt(e.hours)}<small>HRS</small></span>
+        ${badge(e)}
         <span class="due"><span class="chip ${s.state}">${stateLabel[s.state]}</span>${s.task?`<span>${esc(s.task)} · ${esc(s.text)}</span>`:`<span>${esc(s.text)}</span>`}</span>
       </button>`).join('')+`</div>`;
   }
   $('#main').innerHTML=h;
 }
+function lastService(e){let d='';db.logs.forEach(l=>{if(l.equipId===e.id&&l.date&&l.date>d)d=l.date;});return d;}
+function badge(e,big){
+  if(hasMeter(e)) return `<span class="meter${big?' big':''}">${meterTxt(e.hours)}<small>HRS</small></span>`;
+  const d=lastService(e);
+  return `<span class="meter date${big?' big':''}">${d?fmtDate(d):'No service yet'}<small>LAST SVC</small></span>`;
+}
 function spec(label,val,mono){return val?`<div><dt>${label}</dt><dd${mono?' class="mono"':''}>${esc(val)}</dd></div>`:'';}
 function renderDetail(){
   const e=db.equipment.find(x=>x.id===view.id);
   const logs=db.logs.filter(l=>l.equipId===e.id).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.hours||0)-(a.hours||0));
+  const m=hasMeter(e);
   const ivs=(e.intervals||[]).map(iv=>({iv,s:ivStatus(e,iv)})).sort((a,b)=>RANK[b.s.state]-RANK[a.s.state]);
   const specs=[spec('Make',e.make),spec('Model',e.model,1),spec('Serial number',e.serial,1),spec('Year',e.year),
     spec('Engine',e.engineMake),spec('Engine serial',e.engineSerial,1),spec('Fuel',e.fuel),spec('Oil',[e.oilType,e.oilCap].filter(Boolean).join(' · ')),
@@ -354,14 +392,14 @@ function renderDetail(){
   let h=`<button class="btn small back" type="button" data-act="back">← All equipment</button>
   <div class="dhead"><div class="who"><span class="label">${esc(e.type||'Equipment')}${e.ex?' · <span class="chip ex">Example</span>':''}</span><h1>${esc(e.name||'Untitled')}</h1>
     <span class="muted">${esc([e.make,e.model].filter(Boolean).join(' '))}</span></div>
-    <span class="meter big">${meterTxt(e.hours)}<small>HRS</small></span></div>
+    ${badge(e,1)}</div>
   <div class="actions"><button class="btn primary" type="button" data-act="log">Log service</button><button class="btn" type="button" data-act="edit">Edit details</button><button class="btn danger" type="button" data-act="del-eq">Delete</button></div>
-  <section class="panel"><div class="panel-head"><h2>Hour meter</h2><span class="muted" style="font-size:.85rem">${e.hoursUpdated?'Updated '+fmtDate(e.hoursUpdated):''}</span></div>
-    <form class="hours-row" id="hours-form"><label class="label" for="quick-hours">Current reading</label><input id="quick-hours" type="number" step="0.1" min="0" inputmode="decimal" value="${e.hours??''}"><button class="btn" type="submit">Save hours</button></form></section>
+  ${hasMeter(e)?`<section class="panel"><div class="panel-head"><h2>Hour meter</h2><span class="muted" style="font-size:.85rem">${e.hoursUpdated?'Updated '+fmtDate(e.hoursUpdated):''}</span></div>
+    <form class="hours-row" id="hours-form"><label class="label" for="quick-hours">Current reading</label><input id="quick-hours" type="number" step="0.1" min="0" inputmode="decimal" value="${e.hours??''}"><button class="btn" type="submit">Save hours</button></form></section>`:''}
   <section class="panel"><div class="panel-head"><h2>Maintenance schedule</h2></div>
   ${ivs.length?`<div class="tablewrap"><table><thead><tr><th>Task</th><th>Every</th><th>Last done</th><th>Next due</th><th>Status</th></tr></thead><tbody>
-    ${ivs.map(({iv,s})=>`<tr><td>${esc(iv.task)}</td><td class="num">${[iv.everyHours?iv.everyHours+' h':'',iv.everyDays?iv.everyDays+' d':''].filter(Boolean).join(' / ')||'—'}</td>
-    <td class="num">${iv.lastHours!=null?fmtH(iv.lastHours)+' h':''}${iv.lastHours!=null&&iv.lastDate?'<br>':''}${iv.lastDate?fmtDate(iv.lastDate):''}${iv.lastHours==null&&!iv.lastDate?'—':''}</td>
+    ${ivs.map(({iv,s})=>`<tr><td>${esc(iv.task)}</td><td class="num">${[m&&iv.everyHours?iv.everyHours+' h':'',iv.everyDays?iv.everyDays+' d':''].filter(Boolean).join(' / ')||'—'}</td>
+    <td class="num">${m&&iv.lastHours!=null?fmtH(iv.lastHours)+' h':''}${m&&iv.lastHours!=null&&iv.lastDate?'<br>':''}${iv.lastDate?fmtDate(iv.lastDate):''}${(!m||iv.lastHours==null)&&!iv.lastDate?'—':''}</td>
     <td class="num">${s.dueH!=null?fmtH(s.dueH)+' h':''}${s.dueH!=null&&s.dueD?'<br>':''}${s.dueD?fmtDate(s.dueD):''}${s.dueH==null&&!s.dueD?'—':''}</td>
     <td><span class="chip ${s.state}">${stateLabel[s.state]}</span></td></tr>`).join('')}</tbody></table></div>`
   :`<p class="muted">No intervals set. Use Edit details to add a schedule.</p>`}</section>
@@ -369,7 +407,7 @@ function renderDetail(){
     ${specs?`<dl class="specs">${specs}</dl>`:`<p class="muted">No details yet.</p>`}
     ${e.notes?`<div><span class="label">Notes</span><p class="notes">${esc(e.notes)}</p></div>`:''}</section>
   <section class="panel log"><div class="panel-head"><h2>Service history</h2>${totalCost?`<span class="mono muted">$${totalCost.toFixed(2)} logged</span>`:''}</div>
-    ${logs.length?`<ul>${logs.map(l=>`<li><div><div class="what">${esc((l.tasks||[]).join(', ')||'Service')}</div><div class="meta">${fmtDate(l.date)}${l.hours!=null?' · '+fmtH(l.hours)+' h':''}${l.cost?' · $'+(+l.cost).toFixed(2):''}</div></div>
+    ${logs.length?`<ul>${logs.map(l=>`<li><div><div class="what">${esc((l.tasks||[]).join(', ')||'Service')}</div><div class="meta">${fmtDate(l.date)}${m&&l.hours!=null?' · '+fmtH(l.hours)+' h':''}${l.cost?' · $'+(+l.cost).toFixed(2):''}</div></div>
       <button class="btn small danger" type="button" data-del-log="${l.id}">Delete</button>
       ${l.parts||l.notes?`<div class="extra">${l.parts?'Parts: '+esc(l.parts):''}${l.parts&&l.notes?'\n':''}${esc(l.notes||'')}</div>`:''}</li>`).join('')}</ul>`
     :`<p class="muted">No service logged yet.</p>`}</section>`;
@@ -380,17 +418,19 @@ function renderDetail(){
 function openSheet(html){$('#sheet').innerHTML=html;$('#backdrop').hidden=false;document.body.style.overflow='hidden';const f=$('#sheet').querySelector('input:not([type=hidden]),select,textarea');if(f&&matchMedia('(min-width:760px)').matches)f.focus();}
 function closeSheet(){$('#backdrop').hidden=true;$('#sheet').innerHTML='';document.body.style.overflow='';}
 const head=t=>`<div class="sheet-head"><h2>${t}</h2><button class="x" type="button" data-act="close" aria-label="Close">×</button></div>`;
-const fld=(id,label,val,opts={})=>`<label class="field${opts.wide?' wide':''}"><span>${label}</span>${opts.area?`<textarea id="${id}">${esc(val)}</textarea>`:`<input id="${id}" type="${opts.type||'text'}" ${opts.step?`step="${opts.step}" inputmode="decimal"`:''} value="${esc(val??'')}" ${opts.ph?`placeholder="${esc(opts.ph)}"`:''}>`}</label>`;
+const fld=(id,label,val,opts={})=>`<label class="field${opts.wide?' wide':''}${opts.cls?' '+opts.cls:''}"><span>${label}</span>${opts.area?`<textarea id="${id}">${esc(val)}</textarea>`:`<input id="${id}" type="${opts.type||'text'}" ${opts.step?`step="${opts.step}" inputmode="decimal"`:''} value="${esc(val??'')}" ${opts.ph?`placeholder="${esc(opts.ph)}"`:''}>`}</label>`;
 function ivRow(iv){return `<div class="iv-row" data-ivid="${esc(iv.id||'')}" data-lh="${iv.lastHours??''}" data-ld="${esc(iv.lastDate||'')}"><input class="iv-task" value="${esc(iv.task||'')}" placeholder="Task" aria-label="Task"><input class="iv-h" type="number" step="0.1" inputmode="decimal" value="${iv.everyHours??''}" placeholder="hrs" aria-label="Every hours"><input class="iv-d" type="number" inputmode="numeric" value="${iv.everyDays??''}" placeholder="days" aria-label="Every days"><button type="button" class="iv-del" data-act="iv-del" aria-label="Remove task">×</button></div>`;}
 function equipForm(e){
-  const isNew=!e; e=e||{type:'Riding mower',intervals:TEMPLATES['Riding mower'].map(([task,h,d])=>({task,everyHours:h,everyDays:d}))};
+  const isNew=!e; e=e||{type:'Riding mower',meter:true,intervals:template('Riding mower',true).map(([task,h,d])=>({task,everyHours:h,everyDays:d}))};
+  const m=hasMeter(e);
   openSheet(`${head(isNew?'Add equipment':'Edit details')}
-  <form id="eq-form" style="display:flex;flex-direction:column;gap:18px">
+  <form id="eq-form" class="${m?'':'nometer'}" style="display:flex;flex-direction:column;gap:18px">
     <fieldset><legend>Identity</legend><div class="grid">
       ${fld('f-name','Name *',e.name,{ph:'e.g. Garage rider'})}
       <label class="field"><span>Type</span><select id="f-type">${TYPES.map(t=>`<option${t===e.type?' selected':''}>${t}</option>`).join('')}</select></label>
       ${fld('f-make','Make',e.make)}${fld('f-model','Model number',e.model)}${fld('f-serial','Serial number',e.serial)}${fld('f-year','Year',e.year)}
-      ${fld('f-hours','Current hours',e.hours,{type:'number',step:'0.1'})}
+      <label class="field checkrow wide"><input type="checkbox" id="f-meter"${m?' checked':''}> Has an hour meter</label>
+      ${fld('f-hours','Current hours',e.hours,{type:'number',step:'0.1',cls:'f-hours-wrap'})}
     </div></fieldset>
     <fieldset><legend>Engine</legend><div class="grid">
       ${fld('f-engine','Engine make / model',e.engineMake)}${fld('f-eserial','Engine serial / spec',e.engineSerial)}${fld('f-fuel','Fuel',e.fuel,{ph:'Gasoline, 50:1 mix…'})}
@@ -405,7 +445,7 @@ function equipForm(e){
       ${fld('f-notes','Notes',e.notes,{area:1,wide:1})}
     </div></fieldset>
     <fieldset><legend>Maintenance schedule</legend>
-      <p class="muted" style="margin:0;font-size:.85rem">Set hours, days, or both. Whichever comes first triggers "due".</p>
+      <p class="muted" id="iv-hint" style="margin:0;font-size:.85rem">${ivHint(m)}</p>
       <div class="iv-row iv-head"><span>Task</span><span>Every hrs</span><span>Every days</span><span></span></div>
       <div id="iv-list" style="display:flex;flex-direction:column;gap:6px">${(e.intervals||[]).map(ivRow).join('')}</div>
       <div class="actions"><button class="btn small" type="button" data-act="iv-add">+ Add task</button><button class="btn small" type="button" data-act="iv-template">Use suggested schedule for type</button></div>
@@ -414,6 +454,7 @@ function equipForm(e){
     <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">${isNew?'Add equipment':'Save changes'}</button></div>
   </form>`);
   $('#eq-form').dataset.id=isNew?'':e.id;
+  $('#eq-form').dataset.isNew=isNew?'1':'';
 }
 function saveEquip(form){
   const v=id=>$('#'+id).value.trim();
@@ -422,7 +463,7 @@ function saveEquip(form){
   const existing=id?db.equipment.find(x=>x.id===id):null;
   const e=existing||{id:uid(),intervals:[]};
   const oldH=e.hours;
-  Object.assign(e,{name:v('f-name'),type:$('#f-type').value,make:v('f-make'),model:v('f-model'),serial:v('f-serial'),year:v('f-year'),hours:num(v('f-hours'))??0,
+  Object.assign(e,{name:v('f-name'),type:$('#f-type').value,meter:$('#f-meter').checked,make:v('f-make'),model:v('f-model'),serial:v('f-serial'),year:v('f-year'),hours:num(v('f-hours'))??0,
     engineMake:v('f-engine'),engineSerial:v('f-eserial'),fuel:v('f-fuel'),oilType:v('f-oil'),oilCap:v('f-oilcap'),oilFilter:v('f-oilf'),plug:v('f-plug'),airFilter:v('f-air'),
     fuelFilter:v('f-fuelf'),blade:v('f-blade'),belt:v('f-belt'),tires:v('f-tires'),purchaseDate:v('f-pdate'),dealer:v('f-dealer'),price:v('f-price'),notes:$('#f-notes').value});
   if(oldH!==e.hours) e.hoursUpdated=todayStr();
@@ -435,7 +476,7 @@ function saveEquip(form){
 function logForm(e){
   openSheet(`${head('Log service')}<p class="muted" style="margin:-8px 0 0">${esc(e.name)}</p>
   <form id="log-form" style="display:flex;flex-direction:column;gap:16px">
-    <div class="grid">${fld('l-date','Date',todayStr(),{type:'date'})}${fld('l-hours','Hour meter at service',e.hours,{type:'number',step:'0.1'})}</div>
+    <div class="grid">${fld('l-date','Date',todayStr(),{type:'date'})}${hasMeter(e)?fld('l-hours','Hour meter at service',e.hours,{type:'number',step:'0.1'}):''}</div>
     <fieldset><legend>Work done</legend>
       ${e.intervals.length?`<div class="checks">${e.intervals.map(iv=>`<label><input type="checkbox" name="iv" value="${iv.id}" id="l-iv-${iv.id}">${esc(iv.task)}</label>`).join('')}</div>`:''}
       ${fld('l-other','Other work',null,{ph:'e.g. Replaced deck belt'})}
@@ -450,7 +491,7 @@ function saveLog(form){
   const e=db.equipment.find(x=>x.id===form.dataset.id);
   const checked=[...form.querySelectorAll('input[name=iv]:checked')].map(c=>c.value);
   const other=$('#l-other').value.trim();
-  const date=$('#l-date').value||todayStr(), hours=num($('#l-hours').value);
+  const date=$('#l-date').value||todayStr(), hours=$('#l-hours')?num($('#l-hours').value):null;
   if(!checked.length&&!other){const m=$('#log-err');m.textContent='Check a task or describe the work under Other work.';m.hidden=false;return;}
   const tasks=checked.map(id=>e.intervals.find(i=>i.id===id).task); if(other) tasks.push(other);
   db.logs.push({id:uid(),equipId:e.id,date,hours,tasks,parts:$('#l-parts').value.trim(),cost:num($('#l-cost').value),notes:$('#l-notes').value.trim()});
@@ -474,6 +515,10 @@ function backupSheet(){
     <div class="radio" role="radiogroup" aria-label="Import mode"><label><input type="radio" name="imp-mode" id="imp-merge" value="merge" checked> Merge with what's here</label><label><input type="radio" name="imp-mode" id="imp-replace" value="replace"> Replace everything here</label></div>
     <div class="actions"><button class="btn primary" type="button" data-act="import">Import</button></div>
     <p class="status-msg" id="imp-msg" hidden></p>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:10px"><h3>Start over</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Erase all equipment and service records on this device. Make a backup first if you might want them later.</p>
+    <div class="actions"><button class="btn danger" type="button" data-act="erase-all">Erase all data</button></div>
   </section>`);
 }
 function msg(id,text,good){const m=$('#'+id);m.textContent=text;m.className='status-msg '+(good?'good':'badmsg');m.hidden=false;}
@@ -523,7 +568,7 @@ document.addEventListener('click',ev=>{
     case 'iv-del': t.closest('.iv-row').remove();break;
     case 'iv-template':{
       const list=$('#iv-list');const have=new Set([...list.querySelectorAll('.iv-task')].map(i=>i.value.trim().toLowerCase()));
-      (TEMPLATES[$('#f-type').value]||[]).forEach(([task,h,d])=>{if(!have.has(task.toLowerCase()))list.insertAdjacentHTML('beforeend',ivRow({task,everyHours:h,everyDays:d}));});
+      template($('#f-type').value,$('#f-meter').checked).forEach(([task,h,d])=>{if(!have.has(task.toLowerCase()))list.insertAdjacentHTML('beforeend',ivRow({task,everyHours:h,everyDays:d}));});
       break;}
     case 'download':{
       const fname=`lawn-equipment-backup-${todayStr()}.json`;
@@ -540,6 +585,7 @@ document.addEventListener('click',ev=>{
       try{navigator.clipboard.writeText(ta.value).then(()=>msg('exp-msg','Backup copied. Paste it somewhere safe.',true),fallback);}catch(err){fallback();}
       break;}
     case 'import': doImport();break;
+    case 'erase-all': arm(t,'Tap again to erase everything',()=>{db={equipment:[],logs:[],examples:false};save();view.mode='list';view.q='';view.type='All';closeSheet();render();});break;
   }
 });
 document.addEventListener('submit',ev=>{
@@ -553,6 +599,11 @@ document.addEventListener('input',ev=>{
   if(ev.target.id==='search'){view.q=ev.target.value;const pos=ev.target.selectionStart;renderList();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos);}catch(e){}}
 });
 document.addEventListener('change',ev=>{
+  if(ev.target.id==='f-meter'){$('#eq-form').classList.toggle('nometer',!ev.target.checked);$('#iv-hint').textContent=ivHint(ev.target.checked);}
+  if(ev.target.id==='f-type'&&$('#eq-form').dataset.isNew){
+    const meter=!NO_METER.includes(ev.target.value);$('#f-meter').checked=meter;$('#eq-form').classList.toggle('nometer',!meter);$('#iv-hint').textContent=ivHint(meter);
+    $('#iv-list').innerHTML=template(ev.target.value,meter).map(([task,h,d])=>ivRow({task,everyHours:h,everyDays:d})).join('');
+  }
   if(ev.target.id==='imp-file'){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{$('#imp-text').value=r.result;msg('imp-msg',`Loaded ${file.name}. Choose merge or replace, then Import.`,true);};r.onerror=()=>msg('imp-msg','Couldn\'t read that file. Try pasting its text instead.');r.readAsText(file);}
 });
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!$('#backdrop').hidden)closeSheet();});
@@ -562,6 +613,7 @@ $('#btn-backup').addEventListener('click',backupSheet);
 let dl=null;
 try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{dl=d;},()=>{});}catch(e){}
 if(!load()){seed();save();}
+try{var mv=document.querySelector('meta[name="app-version"]');if(mv&&mv.content)$('#appVersion').textContent='v'+mv.content}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{});}catch(e){}
 render();
 })();
