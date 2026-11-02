@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="app-version" content="1.0.0">
+<meta name="theme-color" content="#2d6a37">
+<title>Lawn Equipment Log</title>
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column (list -> unit detail), sheets slide up for forms; hour-meter readouts as the signature detail */
+:root{
+  --bg:#eef0ea; --surface:#fbfcf9; --sunk:#e4e8de; --ink:#1b221c; --muted:#5b665c; --line:#d3d9cc;
+  --accent:#2d6a37; --accent-ink:#ffffff; --accent-soft:#dbe8d6;
+  --meter-bg:#1d241e; --meter-ink:#d9f2c4;
+  --ok:#2c7442; --ok-bg:#dcefe0; --warn:#9a5a06; --warn-bg:#f8e7c8; --bad:#a8231b; --bad-bg:#f8dcd8; --none:#5b665c; --none-bg:#e4e8de;
+  --display:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121612; --surface:#1a201b; --sunk:#232a24; --ink:#e3e9e0; --muted:#9aa69a; --line:#2e372f;
+  --accent:#7cc487; --accent-ink:#0e1a10; --accent-soft:#233a27;
+  --meter-bg:#0b0e0b; --meter-ink:#bfeaa6;
+  --ok:#86d29a; --ok-bg:#1e3524; --warn:#eab063; --warn-bg:#3a2c14; --bad:#f2847a; --bad-bg:#3d1c19; --none:#9aa69a; --none-bg:#262d27;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121612; --surface:#1a201b; --sunk:#232a24; --ink:#e3e9e0; --muted:#9aa69a; --line:#2e372f;
+  --accent:#7cc487; --accent-ink:#0e1a10; --accent-soft:#233a27;
+  --meter-bg:#0b0e0b; --meter-ink:#bfeaa6;
+  --ok:#86d29a; --ok-bg:#1e3524; --warn:#eab063; --warn-bg:#3a2c14; --bad:#f2847a; --bad-bg:#3d1c19; --none:#9aa69a; --none-bg:#262d27;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:860px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:1.9rem;font-weight:700;line-height:1.05}
+h2{font-size:1.3rem;font-weight:600}
+h3{font-size:1.15rem;font-weight:600}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.label{font-family:var(--display);font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.top p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;font-size:.92rem;display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:var(--surface);border-color:var(--bad)}
+.btn.small{padding:6px 10px;min-height:32px;font-size:.85rem}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+#main,#notices{display:flex;flex-direction:column;gap:14px;min-width:0}
+#notices{gap:8px}
+#notices:empty{display:none}
+.notice{border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:10px 12px;font-size:.9rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.notice.warn{background:var(--warn-bg);border-color:transparent;color:var(--warn)}
+
+.tally{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.tally div{padding:10px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tally div+div{border-left:1px solid var(--line)}
+.tally b{font-family:var(--mono);font-size:1.5rem;font-weight:500;font-variant-numeric:tabular-nums}
+.tally .bad b{color:var(--bad)} .tally .warn b{color:var(--warn)}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters input{flex:1 1 220px;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:.85rem;font-weight:500}
+.fchip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.units{display:flex;flex-direction:column;gap:10px}
+.unit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;text-align:left;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;border-left:5px solid var(--st,var(--line))}
+.unit:hover{border-color:var(--muted);border-left-color:var(--st,var(--muted))}
+.unit .main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.unit .sub{color:var(--muted);font-size:.88rem;overflow-wrap:anywhere}
+.unit .due{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.st-overdue{--st:var(--bad)} .st-soon{--st:var(--warn)} .st-ok{--st:var(--ok)} .st-none{--st:var(--line)}
+
+.meter{display:inline-flex;align-items:baseline;gap:4px;background:var(--meter-bg);color:var(--meter-ink);font-family:var(--mono);font-variant-numeric:tabular-nums;border-radius:6px;padding:5px 9px;font-size:1.05rem;letter-spacing:.04em;align-self:start;white-space:nowrap}
+.meter small{font-size:.7rem;opacity:.75;letter-spacing:.06em}
+.meter.big{font-size:1.7rem;padding:8px 12px}
+
+.chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.chip.overdue{background:var(--bad-bg);color:var(--bad)}
+.chip.soon{background:var(--warn-bg);color:var(--warn)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.none{background:var(--none-bg);color:var(--none)}
+.chip.ex{background:var(--accent-soft);color:var(--accent)}
+
+.empty{border:1px dashed var(--line);border-radius:10px;padding:28px 18px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+
+/* detail */
+.back{align-self:flex-start}
+.dhead{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-start}
+.dhead .who{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dhead h1{overflow-wrap:anywhere}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.hours-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hours-row input{width:9em;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font-family:var(--mono)}
+.tablewrap{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th{text-align:left;font-family:var(--display);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.specs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px 18px;margin:0}
+.specs div{min-width:0;display:flex;flex-direction:column;gap:1px}
+.specs dt{font-family:var(--display);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.specs dd{margin:0;overflow-wrap:anywhere}
+.specs dd.mono{font-size:.92rem}
+.notes{white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.log{display:flex;flex-direction:column}
+.log li{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.log li:last-child{border-bottom:0}
+.log ul{margin:0;padding:0}
+.log .what{font-weight:600}
+.log .meta{color:var(--muted);font-size:.85rem;font-family:var(--mono)}
+.log .extra{grid-column:1/-1;font-size:.88rem;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.muted{color:var(--muted)}
+
+/* sheet */
+.backdrop{position:fixed;inset:0;background:rgba(10,14,10,.5);z-index:20;display:flex;justify-content:center;align-items:flex-end}
+.sheet{background:var(--surface);width:100%;max-width:720px;max-height:92%;overflow-y:auto;border-radius:14px 14px 0 0;padding-block:18px calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+@media (min-width:760px){.backdrop{align-items:center}.sheet{border-radius:14px;max-height:88%}}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.x{border:0;background:var(--sunk);border-radius:8px;width:36px;height:36px;font-size:1.2rem;line-height:1}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+legend{padding:0;margin-bottom:8px;font-family:var(--display);font-weight:600;font-size:1rem;color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field span{font-size:.82rem;font-weight:500;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+.field textarea{min-height:76px;resize:vertical}
+.field.wide{grid-column:1/-1}
+.iv-row{display:grid;grid-template-columns:minmax(0,1fr) 5.5em 5.5em 36px;gap:6px;align-items:center}
+.iv-row input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 8px;min-width:0;width:100%}
+.iv-head{font-size:.75rem;color:var(--muted);font-weight:500}
+.iv-del{border:1px solid var(--line);background:var(--surface);border-radius:8px;height:34px}
+.checks{display:flex;flex-direction:column;gap:6px}
+.checks label{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.checks input{width:18px;height:18px;accent-color:var(--accent)}
+.sheet-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:-24px;background:var(--surface);padding-block:10px 0}
+textarea.json{width:100%;min-height:120px;font-family:var(--mono);font-size:.78rem;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px}
+.status-msg{font-size:.9rem;font-weight:500}
+.status-msg.good{color:var(--ok)} .status-msg.badmsg{color:var(--bad)}
+.radio{display:flex;gap:14px;flex-wrap:wrap}
+.radio label{display:flex;gap:6px;align-items:center}
+@media (max-width:480px){.tally b{font-size:1.25rem}.iv-row{grid-template-columns:minmax(0,1fr) 4.4em 4.4em 34px}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <h1>Lawn Equipment Log</h1>
+      <p>Saved in this browser on this device. Use Backup to move it.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-backup" type="button">Backup &amp; restore</button>
+      <button class="btn primary" id="btn-add" type="button">+ Add equipment</button>
+    </div>
+  </header>
+  <div id="notices"></div>
+  <main id="main"></main>
+</div>
+<div class="backdrop" id="backdrop" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<script>
+(function(){
+const KEY='lawnEquipLog.v1';
+const TYPES=['Riding mower','Zero-turn mower','Push mower','String trimmer','Edger','Leaf blower','Chainsaw','Hedge trimmer','Tiller','Snow blower','Other'];
+const TEMPLATES={
+  'Riding mower':[['Engine oil & filter',50,365],['Air filter clean/replace',25,null],['Spark plug(s)',100,365],['Sharpen blades',25,null],['Grease fittings',25,null],['Fuel filter',100,365],['Check belts & tire pressure',null,90]],
+  'Zero-turn mower':[['Engine oil & filter',100,365],['Air filter',50,null],['Hydro oil & filters',400,null],['Sharpen blades',25,null],['Grease fittings',25,null],['Spark plugs',200,365]],
+  'Push mower':[['Change oil',50,365],['Air filter',25,365],['Spark plug',100,365],['Sharpen blade',25,null]],
+  'String trimmer':[['Clean air filter',10,null],['Spark plug',100,365],['Fuel filter',null,365],['Grease gearhead',25,null]],
+  'Edger':[['Clean air filter',10,null],['Spark plug',100,365],['Replace blade',25,null]],
+  'Leaf blower':[['Clean air filter',25,null],['Spark plug',100,365],['Fuel filter',null,365]],
+  'Chainsaw':[['Sharpen chain',5,null],['Clean air filter',10,null],['Flip & clean bar',10,null],['Spark plug',100,365]],
+  'Hedge trimmer':[['Clean air filter',10,null],['Lubricate blades',10,null],['Spark plug',100,365]],
+  'Tiller':[['Change oil',50,365],['Air filter',25,null],['Spark plug',100,365]],
+  'Snow blower':[['Change oil',null,365],['Spark plug',100,365],['Check shear pins & belts',null,365]],
+  'Other':[]
+};
+let db={equipment:[],logs:[],examples:false};
+let storageOK=true;
+const view={mode:'list',id:null,q:'',type:'All'};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const todayStr=()=>iso(new Date());
+const addDays=(s,n)=>{const[y,m,d]=s.split('-').map(Number);return iso(new Date(y,m-1,d+n));};
+const dayNum=s=>{const[y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)/864e5;};
+const daysBetween=(a,b)=>Math.round(dayNum(b)-dayNum(a));
+const fmtDate=s=>{if(!s)return '—';const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});};
+const fmtH=n=>(n==null||n===''||isNaN(n))?'—':(+n).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
+const num=v=>{if(v==null)return null;v=String(v).trim();if(v==='')return null;const n=parseFloat(v);return isNaN(n)?null:n;};
+const meterTxt=n=>{n=+n||0;const s=n.toFixed(1);return s.padStart(6,'0');};
+
+/* ---------- storage ---------- */
+function normalize(o){
+  const out={equipment:Array.isArray(o.equipment)?o.equipment:[],logs:Array.isArray(o.logs)?o.logs:[],examples:!!o.examples};
+  out.equipment.forEach(e=>{if(!e.id)e.id=uid();if(!Array.isArray(e.intervals))e.intervals=[];e.intervals.forEach(i=>{if(!i.id)i.id=uid();});});
+  out.logs.forEach(l=>{if(!l.id)l.id=uid();if(!Array.isArray(l.tasks))l.tasks=l.tasks?[String(l.tasks)]:[];});
+  return out;
+}
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(raw){db=normalize(JSON.parse(raw));return true;}}catch(e){storageOK=false;}
+  return false;
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(db));storageOK=true;}catch(e){storageOK=false;}
+}
+
+/* ---------- examples ---------- */
+function seed(){
+  const t=todayStr();
+  const mk=(e)=>Object.assign({id:uid(),ex:true,intervals:[]},e);
+  const rider=mk({name:'Rider (example)',type:'Riding mower',make:'Example Co.',model:'LT-42',serial:'EX-LT42-004118',year:'2019',engineMake:'Example V-twin 22 hp',engineSerial:'EX-ENG-77120',fuel:'Gasoline (E10 max)',oilType:'SAE 10W-30',oilCap:'2.0 qt with filter',plug:'Example RC12YC',airFilter:'EX-AF-1123',fuelFilter:'EX-FF-55',blade:'EX-BL-42 (x2)',belt:'EX-DB-954',tires:'Front 14 psi / Rear 10 psi',purchaseDate:'2019-05-04',dealer:'Example Implement',price:'',hours:212.4,notes:'Deck belt is starting to glaze. Replace before spring.'});
+  rider.intervals=[
+    {id:uid(),task:'Engine oil & filter',everyHours:50,everyDays:365,lastHours:160.0,lastDate:addDays(t,-150)},
+    {id:uid(),task:'Air filter clean/replace',everyHours:25,everyDays:null,lastHours:190.0,lastDate:addDays(t,-60)},
+    {id:uid(),task:'Spark plug(s)',everyHours:100,everyDays:365,lastHours:160.0,lastDate:addDays(t,-150)},
+    {id:uid(),task:'Sharpen blades',everyHours:25,everyDays:null,lastHours:185.0,lastDate:addDays(t,-70)},
+    {id:uid(),task:'Grease fittings',everyHours:25,everyDays:null,lastHours:205.0,lastDate:addDays(t,-12)},
+  ];
+  const push=mk({name:'Push mower (example)',type:'Push mower',make:'Example Co.',model:'PM-21',serial:'EX-PM21-88213',year:'2021',engineMake:'Example 160cc OHV',fuel:'Gasoline',oilType:'SAE 30',oilCap:'0.5 qt',plug:'Example BPR5ES',airFilter:'EX-AF-210',blade:'EX-BL-21',hours:41.5,notes:''});
+  push.intervals=[
+    {id:uid(),task:'Change oil',everyHours:50,everyDays:365,lastHours:12.0,lastDate:addDays(t,-340)},
+    {id:uid(),task:'Air filter',everyHours:25,everyDays:365,lastHours:25.0,lastDate:addDays(t,-120)},
+    {id:uid(),task:'Spark plug',everyHours:100,everyDays:365,lastHours:null,lastDate:null},
+    {id:uid(),task:'Sharpen blade',everyHours:25,everyDays:null,lastHours:25.0,lastDate:addDays(t,-120)},
+  ];
+  const trim=mk({name:'Trimmer (example)',type:'String trimmer',make:'Example Co.',model:'ST-27',serial:'EX-ST27-30071',year:'2022',engineMake:'27cc 2-stroke',fuel:'50:1 premix',oilType:'2-stroke oil, 50:1',plug:'Example CMR6H',airFilter:'EX-AF-27',blade:'0.095 in. round line',hours:18.0,notes:'Keep fuel stabilized over winter.'});
+  trim.intervals=[
+    {id:uid(),task:'Clean air filter',everyHours:10,everyDays:null,lastHours:14.0,lastDate:addDays(t,-40)},
+    {id:uid(),task:'Spark plug',everyHours:100,everyDays:365,lastHours:0,lastDate:'2022-04-20'},
+    {id:uid(),task:'Grease gearhead',everyHours:25,everyDays:null,lastHours:5.0,lastDate:addDays(t,-200)},
+  ];
+  db.equipment=[rider,push,trim];
+  db.logs=[
+    {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-12),hours:205.0,tasks:['Grease fittings'],parts:'',cost:null,notes:''},
+    {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-60),hours:190.0,tasks:['Air filter clean/replace'],parts:'Blew out filter, reused',cost:null,notes:''},
+    {id:uid(),ex:true,equipId:rider.id,date:addDays(t,-150),hours:160.0,tasks:['Engine oil & filter','Spark plug(s)'],parts:'2 qt 10W-30, filter EX-OF-49, 2 plugs',cost:38.50,notes:'Pre-season service.'},
+    {id:uid(),ex:true,equipId:push.id,date:addDays(t,-120),hours:25.0,tasks:['Air filter','Sharpen blade'],parts:'EX-AF-210',cost:12.99,notes:''},
+    {id:uid(),ex:true,equipId:trim.id,date:addDays(t,-40),hours:14.0,tasks:['Clean air filter'],parts:'',cost:null,notes:''},
+  ];
+  db.examples=true;
+}
+
+/* ---------- status ---------- */
+const RANK={overdue:3,soon:2,none:1,ok:0};
+function ivStatus(eq,iv){
+  const cur=+eq.hours||0, t=todayStr();
+  let hrsLeft=null,daysLeft=null,dueH=null,dueD=null;
+  const never=(iv.lastHours==null)&&!iv.lastDate;
+  if(never) return {state:'none',hrsLeft,daysLeft,dueH,dueD,text:'No service recorded'};
+  if(iv.everyHours&&iv.lastHours!=null){dueH=+iv.lastHours+ +iv.everyHours;hrsLeft=dueH-cur;}
+  if(iv.everyDays&&iv.lastDate){dueD=addDays(iv.lastDate,+iv.everyDays);daysLeft=daysBetween(t,dueD);}
+  let state='ok';
+  if((hrsLeft!=null&&hrsLeft<=0)||(daysLeft!=null&&daysLeft<=0)) state='overdue';
+  else if((hrsLeft!=null&&hrsLeft<=Math.max(2,iv.everyHours*0.1))||(daysLeft!=null&&daysLeft<=14)) state='soon';
+  if(hrsLeft==null&&daysLeft==null) state='none';
+  const parts=[];
+  if(hrsLeft!=null) parts.push(hrsLeft<=0?`${fmtH(-hrsLeft)} h over`:`in ${fmtH(hrsLeft)} h`);
+  if(daysLeft!=null) parts.push(daysLeft<=0?`${-daysLeft} d late`:`by ${fmtDate(dueD)}`);
+  return {state,hrsLeft,daysLeft,dueH,dueD,text:parts.join(' · ')||'No interval set'};
+}
+function eqStatus(eq){
+  let best=null;
+  (eq.intervals||[]).forEach(iv=>{
+    const s=ivStatus(eq,iv);s.task=iv.task;
+    if(!best) {best=s;return;}
+    if(RANK[s.state]>RANK[best.state]) best=s;
+    else if(RANK[s.state]===RANK[best.state]){
+      const a=s.hrsLeft??s.daysLeft??1e9, b=best.hrsLeft??best.daysLeft??1e9;
+      if(a<b) best=s;
+    }
+  });
+  return best||{state:'none',text:'No schedule set',task:''};
+}
+const stateLabel={overdue:'Overdue',soon:'Due soon',ok:'OK',none:'No record'};
+
+/* ---------- render ---------- */
+function renderNotices(){
+  let h='';
+  if(!storageOK) h+=`<div class="notice warn">This browser isn't letting the page save. Changes will be lost when you close it. Use Backup to keep a copy.</div>`;
+  if(db.examples&&db.equipment.some(e=>e.ex)) h+=`<div class="notice"><span><span class="chip ex">Examples</span> &nbsp;Sample equipment is loaded so you can see how it works.</span><button class="linkbtn" type="button" data-act="clear-ex">Remove examples</button></div>`;
+  $('#notices').innerHTML=h;
+}
+function render(){
+  renderNotices();
+  if(view.mode==='detail'&&db.equipment.find(e=>e.id===view.id)) renderDetail();
+  else {view.mode='list';renderList();}
+}
+function renderList(){
+  const eqs=db.equipment.map(e=>({e,s:eqStatus(e)}));
+  const over=eqs.filter(x=>x.s.state==='overdue').length, soon=eqs.filter(x=>x.s.state==='soon').length;
+  const types=['All',...TYPES.filter(t=>db.equipment.some(e=>e.type===t))];
+  if(!types.includes(view.type)) view.type='All';
+  const q=view.q.trim().toLowerCase();
+  const shown=eqs.filter(({e})=>(view.type==='All'||e.type===view.type)&&(!q||[e.name,e.make,e.model,e.serial,e.engineSerial,e.type].join(' ').toLowerCase().includes(q)))
+    .sort((a,b)=>RANK[b.s.state]-RANK[a.s.state]||String(a.e.name).localeCompare(b.e.name));
+  let h=`<div class="tally">
+    <div><span class="label">Equipment</span><b>${db.equipment.length}</b></div>
+    <div class="bad"><span class="label">Overdue</span><b>${over}</b></div>
+    <div class="warn"><span class="label">Due soon</span><b>${soon}</b></div></div>`;
+  if(db.equipment.length){
+    h+=`<div class="filters"><input id="search" type="search" placeholder="Search name, model, serial…" value="${esc(view.q)}" aria-label="Search equipment">
+      <div class="chips">${types.map(t=>`<button type="button" class="fchip" data-type="${esc(t)}" aria-pressed="${t===view.type}">${esc(t)}</button>`).join('')}</div></div>`;
+  }
+  if(!db.equipment.length){
+    h+=`<div class="empty"><h2>No equipment yet</h2><p>Add your mowers, trimmers and other gear to track hours, serial numbers and service.</p><button class="btn primary" type="button" data-act="add">+ Add equipment</button></div>`;
+  } else if(!shown.length){
+    h+=`<div class="empty"><p>Nothing matches that search.</p></div>`;
+  } else {
+    h+=`<div class="units">`+shown.map(({e,s})=>`
+      <button type="button" class="unit st-${s.state}" data-open="${e.id}">
+        <div class="main"><span class="label">${esc(e.type||'Equipment')}${e.year?' · '+esc(e.year):''}</span>
+          <h3>${esc(e.name||'Untitled')}</h3>
+          <span class="sub">${esc([e.make,e.model].filter(Boolean).join(' '))}${e.serial?` · <span class="mono">SN ${esc(e.serial)}</span>`:''}</span></div>
+        <span class="meter">${meterTxt(e.hours)}<small>HRS</small></span>
+        <span class="due"><span class="chip ${s.state}">${stateLabel[s.state]}</span>${s.task?`<span>${esc(s.task)} · ${esc(s.text)}</span>`:`<span>${esc(s.text)}</span>`}</span>
+      </button>`).join('')+`</div>`;
+  }
+  $('#main').innerHTML=h;
+}
+function spec(label,val,mono){return val?`<div><dt>${label}</dt><dd${mono?' class="mono"':''}>${esc(val)}</dd></div>`:'';}
+function renderDetail(){
+  const e=db.equipment.find(x=>x.id===view.id);
+  const logs=db.logs.filter(l=>l.equipId===e.id).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.hours||0)-(a.hours||0));
+  const ivs=(e.intervals||[]).map(iv=>({iv,s:ivStatus(e,iv)})).sort((a,b)=>RANK[b.s.state]-RANK[a.s.state]);
+  const specs=[spec('Make',e.make),spec('Model',e.model,1),spec('Serial number',e.serial,1),spec('Year',e.year),
+    spec('Engine',e.engineMake),spec('Engine serial',e.engineSerial,1),spec('Fuel',e.fuel),spec('Oil',[e.oilType,e.oilCap].filter(Boolean).join(' · ')),
+    spec('Spark plug',e.plug,1),spec('Air filter',e.airFilter,1),spec('Oil filter',e.oilFilter,1),spec('Fuel filter',e.fuelFilter,1),spec('Blade / line',e.blade,1),spec('Belt(s)',e.belt,1),
+    spec('Tires',e.tires),spec('Purchased',e.purchaseDate?fmtDate(e.purchaseDate):''),spec('Purchased from',e.dealer),spec('Price',e.price?('$'+e.price):'')].join('');
+  const totalCost=logs.reduce((s,l)=>s+(+l.cost||0),0);
+  let h=`<button class="btn small back" type="button" data-act="back">← All equipment</button>
+  <div class="dhead"><div class="who"><span class="label">${esc(e.type||'Equipment')}${e.ex?' · <span class="chip ex">Example</span>':''}</span><h1>${esc(e.name||'Untitled')}</h1>
+    <span class="muted">${esc([e.make,e.model].filter(Boolean).join(' '))}</span></div>
+    <span class="meter big">${meterTxt(e.hours)}<small>HRS</small></span></div>
+  <div class="actions"><button class="btn primary" type="button" data-act="log">Log service</button><button class="btn" type="button" data-act="edit">Edit details</button><button class="btn danger" type="button" data-act="del-eq">Delete</button></div>
+  <section class="panel"><div class="panel-head"><h2>Hour meter</h2><span class="muted" style="font-size:.85rem">${e.hoursUpdated?'Updated '+fmtDate(e.hoursUpdated):''}</span></div>
+    <form class="hours-row" id="hours-form"><label class="label" for="quick-hours">Current reading</label><input id="quick-hours" type="number" step="0.1" min="0" inputmode="decimal" value="${e.hours??''}"><button class="btn" type="submit">Save hours</button></form></section>
+  <section class="panel"><div class="panel-head"><h2>Maintenance schedule</h2></div>
+  ${ivs.length?`<div class="tablewrap"><table><thead><tr><th>Task</th><th>Every</th><th>Last done</th><th>Next due</th><th>Status</th></tr></thead><tbody>
+    ${ivs.map(({iv,s})=>`<tr><td>${esc(iv.task)}</td><td class="num">${[iv.everyHours?iv.everyHours+' h':'',iv.everyDays?iv.everyDays+' d':''].filter(Boolean).join(' / ')||'—'}</td>
+    <td class="num">${iv.lastHours!=null?fmtH(iv.lastHours)+' h':''}${iv.lastHours!=null&&iv.lastDate?'<br>':''}${iv.lastDate?fmtDate(iv.lastDate):''}${iv.lastHours==null&&!iv.lastDate?'—':''}</td>
+    <td class="num">${s.dueH!=null?fmtH(s.dueH)+' h':''}${s.dueH!=null&&s.dueD?'<br>':''}${s.dueD?fmtDate(s.dueD):''}${s.dueH==null&&!s.dueD?'—':''}</td>
+    <td><span class="chip ${s.state}">${stateLabel[s.state]}</span></td></tr>`).join('')}</tbody></table></div>`
+  :`<p class="muted">No intervals set. Use Edit details to add a schedule.</p>`}</section>
+  <section class="panel"><div class="panel-head"><h2>Specs &amp; parts</h2></div>
+    ${specs?`<dl class="specs">${specs}</dl>`:`<p class="muted">No details yet.</p>`}
+    ${e.notes?`<div><span class="label">Notes</span><p class="notes">${esc(e.notes)}</p></div>`:''}</section>
+  <section class="panel log"><div class="panel-head"><h2>Service history</h2>${totalCost?`<span class="mono muted">$${totalCost.toFixed(2)} logged</span>`:''}</div>
+    ${logs.length?`<ul>${logs.map(l=>`<li><div><div class="what">${esc((l.tasks||[]).join(', ')||'Service')}</div><div class="meta">${fmtDate(l.date)}${l.hours!=null?' · '+fmtH(l.hours)+' h':''}${l.cost?' · $'+(+l.cost).toFixed(2):''}</div></div>
+      <button class="btn small danger" type="button" data-del-log="${l.id}">Delete</button>
+      ${l.parts||l.notes?`<div class="extra">${l.parts?'Parts: '+esc(l.parts):''}${l.parts&&l.notes?'\n':''}${esc(l.notes||'')}</div>`:''}</li>`).join('')}</ul>`
+    :`<p class="muted">No service logged yet.</p>`}</section>`;
+  $('#main').innerHTML=h;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html){$('#sheet').innerHTML=html;$('#backdrop').hidden=false;document.body.style.overflow='hidden';const f=$('#sheet').querySelector('input:not([type=hidden]),select,textarea');if(f&&matchMedia('(min-width:760px)').matches)f.focus();}
+function closeSheet(){$('#backdrop').hidden=true;$('#sheet').innerHTML='';document.body.style.overflow='';}
+const head=t=>`<div class="sheet-head"><h2>${t}</h2><button class="x" type="button" data-act="close" aria-label="Close">×</button></div>`;
+const fld=(id,label,val,opts={})=>`<label class="field${opts.wide?' wide':''}"><span>${label}</span>${opts.area?`<textarea id="${id}">${esc(val)}</textarea>`:`<input id="${id}" type="${opts.type||'text'}" ${opts.step?`step="${opts.step}" inputmode="decimal"`:''} value="${esc(val??'')}" ${opts.ph?`placeholder="${esc(opts.ph)}"`:''}>`}</label>`;
+function ivRow(iv){return `<div class="iv-row" data-ivid="${esc(iv.id||'')}" data-lh="${iv.lastHours??''}" data-ld="${esc(iv.lastDate||'')}"><input class="iv-task" value="${esc(iv.task||'')}" placeholder="Task" aria-label="Task"><input class="iv-h" type="number" step="0.1" inputmode="decimal" value="${iv.everyHours??''}" placeholder="hrs" aria-label="Every hours"><input class="iv-d" type="number" inputmode="numeric" value="${iv.everyDays??''}" placeholder="days" aria-label="Every days"><button type="button" class="iv-del" data-act="iv-del" aria-label="Remove task">×</button></div>`;}
+function equipForm(e){
+  const isNew=!e; e=e||{type:'Riding mower',intervals:TEMPLATES['Riding mower'].map(([task,h,d])=>({task,everyHours:h,everyDays:d}))};
+  openSheet(`${head(isNew?'Add equipment':'Edit details')}
+  <form id="eq-form" style="display:flex;flex-direction:column;gap:18px">
+    <fieldset><legend>Identity</legend><div class="grid">
+      ${fld('f-name','Name *',e.name,{ph:'e.g. Garage rider'})}
+      <label class="field"><span>Type</span><select id="f-type">${TYPES.map(t=>`<option${t===e.type?' selected':''}>${t}</option>`).join('')}</select></label>
+      ${fld('f-make','Make',e.make)}${fld('f-model','Model number',e.model)}${fld('f-serial','Serial number',e.serial)}${fld('f-year','Year',e.year)}
+      ${fld('f-hours','Current hours',e.hours,{type:'number',step:'0.1'})}
+    </div></fieldset>
+    <fieldset><legend>Engine</legend><div class="grid">
+      ${fld('f-engine','Engine make / model',e.engineMake)}${fld('f-eserial','Engine serial / spec',e.engineSerial)}${fld('f-fuel','Fuel',e.fuel,{ph:'Gasoline, 50:1 mix…'})}
+    </div></fieldset>
+    <fieldset><legend>Parts &amp; fluids</legend><div class="grid">
+      ${fld('f-oil','Oil type',e.oilType,{ph:'SAE 10W-30'})}${fld('f-oilcap','Oil capacity',e.oilCap)}${fld('f-oilf','Oil filter #',e.oilFilter)}
+      ${fld('f-plug','Spark plug #',e.plug)}${fld('f-air','Air filter #',e.airFilter)}${fld('f-fuelf','Fuel filter #',e.fuelFilter)}
+      ${fld('f-blade','Blade / line',e.blade)}${fld('f-belt','Belt(s)',e.belt)}${fld('f-tires','Tires / pressure',e.tires)}
+    </div></fieldset>
+    <fieldset><legend>Purchase</legend><div class="grid">
+      ${fld('f-pdate','Purchase date',e.purchaseDate,{type:'date'})}${fld('f-dealer','Purchased from',e.dealer)}${fld('f-price','Price ($)',e.price,{type:'number',step:'0.01'})}
+      ${fld('f-notes','Notes',e.notes,{area:1,wide:1})}
+    </div></fieldset>
+    <fieldset><legend>Maintenance schedule</legend>
+      <p class="muted" style="margin:0;font-size:.85rem">Set hours, days, or both. Whichever comes first triggers "due".</p>
+      <div class="iv-row iv-head"><span>Task</span><span>Every hrs</span><span>Every days</span><span></span></div>
+      <div id="iv-list" style="display:flex;flex-direction:column;gap:6px">${(e.intervals||[]).map(ivRow).join('')}</div>
+      <div class="actions"><button class="btn small" type="button" data-act="iv-add">+ Add task</button><button class="btn small" type="button" data-act="iv-template">Use suggested schedule for type</button></div>
+    </fieldset>
+    <p class="status-msg badmsg" id="eq-err" hidden></p>
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">${isNew?'Add equipment':'Save changes'}</button></div>
+  </form>`);
+  $('#eq-form').dataset.id=isNew?'':e.id;
+}
+function saveEquip(form){
+  const v=id=>$('#'+id).value.trim();
+  if(!v('f-name')){const m=$('#eq-err');m.textContent='Give it a name so you can find it in the list.';m.hidden=false;$('#f-name').focus();return;}
+  const id=form.dataset.id;
+  const existing=id?db.equipment.find(x=>x.id===id):null;
+  const e=existing||{id:uid(),intervals:[]};
+  const oldH=e.hours;
+  Object.assign(e,{name:v('f-name'),type:$('#f-type').value,make:v('f-make'),model:v('f-model'),serial:v('f-serial'),year:v('f-year'),hours:num(v('f-hours'))??0,
+    engineMake:v('f-engine'),engineSerial:v('f-eserial'),fuel:v('f-fuel'),oilType:v('f-oil'),oilCap:v('f-oilcap'),oilFilter:v('f-oilf'),plug:v('f-plug'),airFilter:v('f-air'),
+    fuelFilter:v('f-fuelf'),blade:v('f-blade'),belt:v('f-belt'),tires:v('f-tires'),purchaseDate:v('f-pdate'),dealer:v('f-dealer'),price:v('f-price'),notes:$('#f-notes').value});
+  if(oldH!==e.hours) e.hoursUpdated=todayStr();
+  e.intervals=[...document.querySelectorAll('#iv-list .iv-row')].map(r=>({
+    id:r.dataset.ivid||uid(),task:r.querySelector('.iv-task').value.trim(),everyHours:num(r.querySelector('.iv-h').value),everyDays:num(r.querySelector('.iv-d').value),
+    lastHours:num(r.dataset.lh),lastDate:r.dataset.ld||null})).filter(i=>i.task);
+  if(!existing) db.equipment.push(e);
+  save();closeSheet();view.mode='detail';view.id=e.id;render();window.scrollTo(0,0);
+}
+function logForm(e){
+  openSheet(`${head('Log service')}<p class="muted" style="margin:-8px 0 0">${esc(e.name)}</p>
+  <form id="log-form" style="display:flex;flex-direction:column;gap:16px">
+    <div class="grid">${fld('l-date','Date',todayStr(),{type:'date'})}${fld('l-hours','Hour meter at service',e.hours,{type:'number',step:'0.1'})}</div>
+    <fieldset><legend>Work done</legend>
+      ${e.intervals.length?`<div class="checks">${e.intervals.map(iv=>`<label><input type="checkbox" name="iv" value="${iv.id}" id="l-iv-${iv.id}">${esc(iv.task)}</label>`).join('')}</div>`:''}
+      ${fld('l-other','Other work',null,{ph:'e.g. Replaced deck belt'})}
+    </fieldset>
+    <div class="grid">${fld('l-parts','Parts used',null,{ph:'Part numbers, quantities'})}${fld('l-cost','Cost ($)',null,{type:'number',step:'0.01'})}${fld('l-notes','Notes',null,{area:1,wide:1})}</div>
+    <p class="status-msg badmsg" id="log-err" hidden></p>
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save service</button></div>
+  </form>`);
+  $('#log-form').dataset.id=e.id;
+}
+function saveLog(form){
+  const e=db.equipment.find(x=>x.id===form.dataset.id);
+  const checked=[...form.querySelectorAll('input[name=iv]:checked')].map(c=>c.value);
+  const other=$('#l-other').value.trim();
+  const date=$('#l-date').value||todayStr(), hours=num($('#l-hours').value);
+  if(!checked.length&&!other){const m=$('#log-err');m.textContent='Check a task or describe the work under Other work.';m.hidden=false;return;}
+  const tasks=checked.map(id=>e.intervals.find(i=>i.id===id).task); if(other) tasks.push(other);
+  db.logs.push({id:uid(),equipId:e.id,date,hours,tasks,parts:$('#l-parts').value.trim(),cost:num($('#l-cost').value),notes:$('#l-notes').value.trim()});
+  checked.forEach(id=>{const iv=e.intervals.find(i=>i.id===id);
+    if(!iv.lastDate||date>=iv.lastDate){iv.lastDate=date;if(hours!=null)iv.lastHours=hours;}});
+  if(hours!=null&&hours>(+e.hours||0)){e.hours=hours;e.hoursUpdated=date;}
+  save();closeSheet();render();
+}
+function backupJSON(){return JSON.stringify({app:'lawn-equipment-log',version:1,exportedAt:new Date().toISOString(),equipment:db.equipment,logs:db.logs},null,2);}
+function backupSheet(){
+  openSheet(`${head('Backup &amp; restore')}
+  <section style="display:flex;flex-direction:column;gap:10px"><h3>Export</h3>
+    <p class="muted" style="margin:0;font-size:.9rem">Save a backup file, or copy the text and paste it into a note, email or file. On the other device, open this tool and import it below.</p>
+    <div class="actions"><button class="btn primary" type="button" data-act="download">Download backup file</button><button class="btn" type="button" data-act="copy">Copy backup text</button></div>
+    <p class="status-msg" id="exp-msg" hidden></p>
+    <textarea class="json" id="exp-text" readonly aria-label="Backup text">${esc(backupJSON())}</textarea>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:10px"><h3>Import</h3>
+    <label class="field"><span>Choose a backup file (.json)</span><input id="imp-file" type="file" accept=".json,application/json,text/plain"></label>
+    <label class="field"><span>…or paste backup text</span><textarea class="json" id="imp-text" placeholder='{"app":"lawn-equipment-log", …}'></textarea></label>
+    <div class="radio" role="radiogroup" aria-label="Import mode"><label><input type="radio" name="imp-mode" id="imp-merge" value="merge" checked> Merge with what's here</label><label><input type="radio" name="imp-mode" id="imp-replace" value="replace"> Replace everything here</label></div>
+    <div class="actions"><button class="btn primary" type="button" data-act="import">Import</button></div>
+    <p class="status-msg" id="imp-msg" hidden></p>
+  </section>`);
+}
+function msg(id,text,good){const m=$('#'+id);m.textContent=text;m.className='status-msg '+(good?'good':'badmsg');m.hidden=false;}
+function doImport(){
+  const text=$('#imp-text').value.trim();
+  if(!text){msg('imp-msg','Choose a backup file or paste backup text first.');return;}
+  let data;
+  try{data=JSON.parse(text);}catch(err){msg('imp-msg','That text isn\'t a valid backup. Paste the whole thing, starting with {');return;}
+  if(!data||!Array.isArray(data.equipment)){msg('imp-msg','That file doesn\'t look like a Lawn Equipment Log backup.');return;}
+  const inc=normalize(data);
+  const mode=$('#imp-replace').checked?'replace':'merge';
+  if(mode==='replace'){db={equipment:inc.equipment,logs:inc.logs,examples:false};}
+  else{
+    inc.equipment.forEach(e=>{const i=db.equipment.findIndex(x=>x.id===e.id);if(i>=0)db.equipment[i]=e;else db.equipment.push(e);});
+    inc.logs.forEach(l=>{const i=db.logs.findIndex(x=>x.id===l.id);if(i>=0)db.logs[i]=l;else db.logs.push(l);});
+  }
+  save();render();
+  msg('imp-msg',`Imported ${inc.equipment.length} equipment and ${inc.logs.length} service records (${mode==='replace'?'replaced':'merged'}).`,true);
+  $('#exp-text').value=backupJSON();
+}
+
+/* ---------- events ---------- */
+let armed=null;
+function arm(btn,label,fn){
+  if(armed&&armed.btn===btn){clearTimeout(armed.t);armed=null;fn();return;}
+  if(armed){armed.btn.classList.remove('armed');armed.btn.textContent=armed.old;clearTimeout(armed.t);}
+  const old=btn.textContent;btn.classList.add('armed');btn.textContent=label;
+  armed={btn,old,t:setTimeout(()=>{btn.classList.remove('armed');btn.textContent=old;armed=null;},4000)};
+}
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-act],[data-open],[data-type],[data-del-log]');
+  if(ev.target===$('#backdrop')){closeSheet();return;}
+  if(!t) return;
+  if(t.dataset.open){view.mode='detail';view.id=t.dataset.open;render();window.scrollTo(0,0);return;}
+  if(t.dataset.type){view.type=t.dataset.type;renderList();return;}
+  if(t.dataset.delLog){arm(t,'Tap again to delete',()=>{db.logs=db.logs.filter(l=>l.id!==t.dataset.delLog);save();render();});return;}
+  const e=db.equipment.find(x=>x.id===view.id);
+  switch(t.dataset.act){
+    case 'add': equipForm(null);break;
+    case 'back': view.mode='list';render();break;
+    case 'edit': equipForm(e);break;
+    case 'log': logForm(e);break;
+    case 'del-eq': arm(t,'Tap again to delete',()=>{db.equipment=db.equipment.filter(x=>x.id!==e.id);db.logs=db.logs.filter(l=>l.equipId!==e.id);save();view.mode='list';render();});break;
+    case 'close': closeSheet();break;
+    case 'clear-ex': db.equipment=db.equipment.filter(x=>!x.ex);db.logs=db.logs.filter(l=>!l.ex);db.examples=false;save();view.mode='list';render();break;
+    case 'iv-add': $('#iv-list').insertAdjacentHTML('beforeend',ivRow({}));$('#iv-list').lastElementChild.querySelector('input').focus();break;
+    case 'iv-del': t.closest('.iv-row').remove();break;
+    case 'iv-template':{
+      const list=$('#iv-list');const have=new Set([...list.querySelectorAll('.iv-task')].map(i=>i.value.trim().toLowerCase()));
+      (TEMPLATES[$('#f-type').value]||[]).forEach(([task,h,d])=>{if(!have.has(task.toLowerCase()))list.insertAdjacentHTML('beforeend',ivRow({task,everyHours:h,everyDays:d}));});
+      break;}
+    case 'download':{
+      const fname=`lawn-equipment-backup-${todayStr()}.json`;
+      if(dl){dl.save({filename:fname,data:backupJSON()}).then(()=>msg('exp-msg','Backup file saved.',true),err=>{
+        if(err&&err.code==='declined')msg('exp-msg','Download canceled.');else msg('exp-msg','Downloads aren\'t available here. Use Copy backup text instead.');});break;}
+      try{const blob=new Blob([backupJSON()],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
+        a.href=url;a.download=`lawn-equipment-backup-${todayStr()}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+        msg('exp-msg','If no file appeared, this view blocks downloads. Use Copy backup text instead.',true);}
+      catch(err){msg('exp-msg','Downloads are blocked here. Use Copy backup text instead.');}
+      break;}
+    case 'copy':{
+      const ta=$('#exp-text');ta.value=backupJSON();
+      const fallback=()=>{ta.focus();ta.select();msg('exp-msg','Text selected. Copy it with your device\'s copy command.');};
+      try{navigator.clipboard.writeText(ta.value).then(()=>msg('exp-msg','Backup copied. Paste it somewhere safe.',true),fallback);}catch(err){fallback();}
+      break;}
+    case 'import': doImport();break;
+  }
+});
+document.addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const f=ev.target;
+  if(f.id==='eq-form') saveEquip(f);
+  else if(f.id==='log-form') saveLog(f);
+  else if(f.id==='hours-form'){const e=db.equipment.find(x=>x.id===view.id);const h=num($('#quick-hours').value);if(h!=null){e.hours=h;e.hoursUpdated=todayStr();save();render();}}
+});
+document.addEventListener('input',ev=>{
+  if(ev.target.id==='search'){view.q=ev.target.value;const pos=ev.target.selectionStart;renderList();const s=$('#search');s.focus();try{s.setSelectionRange(pos,pos);}catch(e){}}
+});
+document.addEventListener('change',ev=>{
+  if(ev.target.id==='imp-file'){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{$('#imp-text').value=r.result;msg('imp-msg',`Loaded ${file.name}. Choose merge or replace, then Import.`,true);};r.onerror=()=>msg('imp-msg','Couldn\'t read that file. Try pasting its text instead.');r.readAsText(file);}
+});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!$('#backdrop').hidden)closeSheet();});
+$('#btn-add').addEventListener('click',()=>equipForm(null));
+$('#btn-backup').addEventListener('click',backupSheet);
+
+let dl=null;
+try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{dl=d;},()=>{});}catch(e){}
+if(!load()){seed();save();}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{});}catch(e){}
+render();
+})();
+</script>
+
+</body>
+</html>
